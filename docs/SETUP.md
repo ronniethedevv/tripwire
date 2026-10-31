@@ -77,27 +77,53 @@ Switch publishes an all-in-one Docker Compose stack as an OCI artifact; it is a 
    ```sh
    oras pull ghcr.io/sandbox-quantum/standalone-compose:"$VERSION"
    ```
-3. Create the `.env` beside it. The required, can't-change-later and secret values
-   (`self-host.md:50,65-73,112`; `deploy/local/standalone-docker-compose.yml`;
-   `deploy/local/generate-env-secrets.sh`):
-   - `SWITCH_VERSION=` the same tag you set as `VERSION` above — **required, no default**; a wrong or
-     missing value refuses to start.
-   - `MATRIX_SERVER_NAME=tripwire-demo` — the server's name; it becomes the second half of every id and
-     **cannot be changed after the first start**. Pick deliberately.
-   - `AGENT_REGISTRATION_TOKEN=<secret>` — the seeded admin registration key agents register against
-     (keep it; used in section E).
-   - `JWT_SECRET_KEY=<secret>` — signs sessions **and encrypts the API keys the server stores**. Guard
-     it: lose it and stored keys can't be read back (the reveal in section E breaks).
-   - `SWITCH_BIND_ADDR=0.0.0.0` — both ports bind to `127.0.0.1` otherwise, reachable only on the VM.
-   - `GATEWAY_PUBLIC_URL=http://<VM_IP>:3000` — makes Discord "Open in Switch Console" links clickable
-     (`docs/official/deploy/messaging-apps/discord.md:122`).
-   - Fill `DB_PASSWORD`, `DB_OWNER_PASSWORD`, `GATEWAY_ADMIN_PASSWORD`, etc. with `openssl rand -hex 24`
-     (or run `deploy/local/generate-env-secrets.sh <env-file> tripwire`).
-4. Start the core + Gateway (skip the `collab`/Mattermost profile — we use Discord):
+3. Write the `.env` next to the compose file. The `oras pull` ships **only** the compose yml — there is
+   no `.env.example` to copy — so create one. This block fills it with fresh random secrets (var names
+   and defaults from `deploy/local/standalone-docker-compose.yml:203-240` and the repo's `.env.example`):
    ```sh
-   SWITCH_VERSION="$VERSION" COMPOSE_PROFILES=gateway \
-     docker compose -f standalone-docker-compose.yml up -d
+   cat > .env <<EOF
+   SWITCH_VERSION=0.31.0
+   COMPOSE_PROFILES=gateway
+   SECRET_KEYS=k1:$(openssl rand -hex 32)
+   DB_NAME=switch
+   DB_USER=switch_app
+   DB_PASSWORD=$(openssl rand -hex 24)
+   DB_OWNER_USER=postgres
+   DB_OWNER_PASSWORD=$(openssl rand -hex 24)
+   AGENT_REGISTRATION_TOKEN=$(openssl rand -hex 24)
+   GATEWAY_ADMIN_EMAIL=admin@switch.local
+   GATEWAY_ADMIN_PASSWORD=$(openssl rand -hex 24)
+   FRONTEND_BASE_URL=http://127.0.0.1:3000
+   SWITCH_BIND_ADDR=0.0.0.0
+   GATEWAY_PUBLIC_URL=http://127.0.0.1:3000
+   EOF
+   chmod 600 .env
    ```
+   What matters, and why:
+   - `SWITCH_VERSION` — required, no default; a wrong/missing value refuses to start.
+   - `SECRET_KEYS` (`id:secret`, secret 32+ chars) — **the master key that encrypts stored API keys.
+     Guard it.** Lose it and keys can't be read back (the section E reveal breaks). This supersedes the
+     self-host doc's `JWT_SECRET_KEY`, which this release treats as legacy/optional
+     (`standalone-docker-compose.yml:221-224`).
+   - `AGENT_REGISTRATION_TOKEN` — agents register against this; reused in section E. **Save it.**
+   - `GATEWAY_ADMIN_EMAIL` / `GATEWAY_ADMIN_PASSWORD` — your Gateway login, needed for the section E
+     reveal. **Save the password.**
+   - `SWITCH_BIND_ADDR=0.0.0.0` — publishes the ports beyond `127.0.0.1` so Switch Console on your laptop
+     can reach them.
+   - The server name is **hardcoded to `localhost`** in this compose (`MATRIX_SERVER_NAME`/`ID_SERVER_NAME`,
+     lines 215/219) — you don't set it, and it can't change later.
+   - For clickable Discord "Open in Switch Console" links, set `GATEWAY_PUBLIC_URL` (and `FRONTEND_BASE_URL`)
+     to `http://<YOUR_VM_PUBLIC_IP>:3000` instead of `127.0.0.1`
+     (`docs/official/deploy/messaging-apps/discord.md:122`).
+
+   Save what you'll reuse: `grep -E 'AGENT_REGISTRATION_TOKEN|GATEWAY_ADMIN|SECRET_KEYS' .env`.
+4. Start the core + Gateway (profiles come from `.env`; Mattermost/`collab` stays off — we use Discord):
+   ```sh
+   docker compose -f standalone-docker-compose.yml up -d
+   docker compose -f standalone-docker-compose.yml ps     # services Up/healthy
+   ```
+   If Docker says "permission denied", log out of the VM and back in (so the `docker` group applies), or
+   prefix the command with `sudo`.
 5. The three URLs (`self-host.md:61`; `/health` + `/agents` live on the bridge app
    `core/switch_core/main.py:1241`, `core/switch_core/bridges/agent/app.py:162-168`; Gateway mount
    `core/switch_core/gateway/app.py:212`):
@@ -220,8 +246,8 @@ mounted at `/api-keys`, `gateway/app.py:212`):
 GET  {GATEWAY_URL}/api-keys                 → find the tripwire key's {key_id}
 GET  {GATEWAY_URL}/api-keys/{key_id}/reveal → { "key": "<plaintext>" }   (owner-only, audited)
 ```
-This needs `JWT_SECRET_KEY` unchanged since registration (`self-host.md:112`); if it changed, rotate by
-re-registering with `overwrite=True` instead.
+This needs `SECRET_KEYS` unchanged since registration (the master key that encrypts stored keys,
+`standalone-docker-compose.yml:221`); if it changed, rotate by re-registering with `overwrite=True` instead.
 
 Find the **agent id** from the Option 1 response, or in Console (Your Agents) / the `list_agents`
 operation. Find the **room id** for `#launch-room` from Console (room details) or the `list_rooms`

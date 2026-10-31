@@ -166,6 +166,11 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — Corrected `docs/SETUP.md` section B against the real `standalone-compose:0.31.0` during a
+  live VM deploy: the `oras` artifact ships only the compose yml (no `.env.example`), so the runbook now
+  gives a ready-to-paste `.env` with `openssl`-generated secrets; the key-guarding secret is `SECRET_KEYS`
+  (not `JWT_SECRET_KEY`, now legacy); the server name is hardcoded to `localhost` (not set via env);
+  `COMPOSE_PROFILES=gateway` moved into `.env`. Still Phase 0, docs only.
 - 2026-10-31 — Setup-day prep (still Phase 0, no feature code). CI on PR #1 is green. Added
   `docs/SETUP.md` (phone runbook: VM base, Switch Core compose deploy, Discord, Console remote host +
   agent onboarding, agent id/key into `/etc/tripwire.env`, spike + wake test, Unknowns), and
