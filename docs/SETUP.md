@@ -11,6 +11,11 @@ docs say to take the server version from the registry at deploy time, not from t
 
 See **Unknowns** at the end for the few things the source could not settle; confirm those on the day.
 
+> **Placeholders.** Anything written like `<VERSION>`, `<VM_IP>` or `<tripwire agent id>` is a blank to
+> fill in — replace the **whole** token, including the `<` and `>`. Never type the angle brackets into a
+> shell: bash reads `<` as a file redirect and fails with `syntax error near unexpected token`. Where a
+> value is reused, the steps set it once as a shell variable (e.g. `VERSION=0.31.0`) so you paste it plain.
+
 ---
 
 ## A. Fresh Ubuntu VM — Docker, Node 20, git, Claude Code
@@ -63,15 +68,20 @@ Switch publishes an all-in-one Docker Compose stack as an OCI artifact; it is a 
    ```sh
    oras repo tags ghcr.io/sandbox-quantum/standalone-compose
    ```
-   Choose the newest stable tag; call it `<VERSION>`.
+   Choose the newest **stable** tag — a plain `x.y.z`, not an `-rc.N` candidate. Set it once (replace
+   the value with the tag you picked; **no angle brackets**):
+   ```sh
+   VERSION=0.31.0
+   ```
 2. Pull the compose file (`RELEASING.md:423-424`):
    ```sh
-   oras pull ghcr.io/sandbox-quantum/standalone-compose:<VERSION>
+   oras pull ghcr.io/sandbox-quantum/standalone-compose:"$VERSION"
    ```
 3. Create the `.env` beside it. The required, can't-change-later and secret values
    (`self-host.md:50,65-73,112`; `deploy/local/standalone-docker-compose.yml`;
    `deploy/local/generate-env-secrets.sh`):
-   - `SWITCH_VERSION=<VERSION>` — **required, no default**; a wrong/missing value refuses to start.
+   - `SWITCH_VERSION=` the same tag you set as `VERSION` above — **required, no default**; a wrong or
+     missing value refuses to start.
    - `MATRIX_SERVER_NAME=tripwire-demo` — the server's name; it becomes the second half of every id and
      **cannot be changed after the first start**. Pick deliberately.
    - `AGENT_REGISTRATION_TOKEN=<secret>` — the seeded admin registration key agents register against
@@ -85,7 +95,7 @@ Switch publishes an all-in-one Docker Compose stack as an OCI artifact; it is a 
      (or run `deploy/local/generate-env-secrets.sh <env-file> tripwire`).
 4. Start the core + Gateway (skip the `collab`/Mattermost profile — we use Discord):
    ```sh
-   SWITCH_VERSION=<VERSION> COMPOSE_PROFILES=gateway \
+   SWITCH_VERSION="$VERSION" COMPOSE_PROFILES=gateway \
      docker compose -f standalone-docker-compose.yml up -d
    ```
 5. The three URLs (`self-host.md:61`; `/health` + `/agents` live on the bridge app
@@ -96,7 +106,8 @@ Switch publishes an all-in-one Docker Compose stack as an OCI artifact; it is a 
    | **API URL = agent bridge base URL** | `http://<VM_IP>:8000` | What Switch Console talks to, and where the watcher posts (`/health`, `/agents/...`). |
    | **Gateway URL** | `http://<VM_IP>:3000` | Admin surface; the `/api-keys/.../reveal` route (section E) lives here. |
 
-   Confirm the bridge: `curl http://<VM_IP>:8000/health` → `200` (a `401` means right host, wrong path;
+   Confirm the bridge (from the VM itself, so localhost works): `curl http://127.0.0.1:8000/health` →
+   `200` (a `401` means right host, wrong path;
    `docs/official/internals/agent-protocol.md:17-21`). **The agent API key travels in a header — put
    these behind TLS (a reverse proxy) or restrict the ports to your own IP / an SSH tunnel.**
 
