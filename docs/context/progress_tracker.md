@@ -166,6 +166,12 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-10-31 — Setup-day prep (still Phase 0, no feature code). CI on PR #1 is green. Added
+  `docs/SETUP.md` (phone runbook: VM base, Switch Core compose deploy, Discord, Console remote host +
+  agent onboarding, agent id/key into `/etc/tripwire.env`, spike + wake test, Unknowns), and
+  `docs/agents/tripwire.md` (v0 persona) + `docs/agents/builder.md` (paste-ready Console fields). All
+  verified against Switch @ `a620ab6`. Flagged a doc-vs-source discrepancy: onboarding doc says the
+  addressing form "starts on Only me", but server + Console code default to `owner_and_owner_agents`.
 - 2026-10-31 — Phase 0 done. Split the spec pack into `agents.md` + `docs/context/*`; researched
   Switch @ `a620ab6` (answered Q1–Q6 with file+line citations, raised conflicts C1 WebSocket-not-SSE
   and C2 task-protocol-removed); scaffolded Node 20 / TS strict / ESM / vitest / eslint + CI
