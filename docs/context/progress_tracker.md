@@ -111,10 +111,14 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
   empty). Do not build on tasks.
 
 ## Day 1 units (in order — one unit at a time, each with tests, per ai_workflow_rules #1–2)
-1. **Room-posting spike (path A).** Against the live Switch bridge on the VM: `GET /health` finds the
-   bridge base URL, then `POST /agents/{id}/message {room_id, content}` lands a plain message in
-   `#launch-room`; confirm waking by posting a message that mentions `@builder`. Record the winner +
-   any transport/addressing gotchas here. (De-risks everything; biggest risk first.)
+1. **Room-posting spike (path A). ✅ VALIDATED 2026-11-01.** On the live Switch `0.31.0` stack
+   (Discord bridge, room `launch-room`): registered an **external** agent `tripwire` in the Gateway,
+   added it to the room, then `POST /agents/{id}/message {room_id, content}` returned `{"ok":true,
+   "event_id":...}` and the message appeared in `#launch-room` under the `tripwire` name. **Path A
+   confirmed — no WebSocket/session/heartbeat needed to post; the connectionless `/message` route is
+   enough.** Room id comes cleanly from the `list_rooms` op (`{room_id, name, ...}`); no gotchas.
+   Still to validate: `@builder` wake (needs builder as a live provider-backed agent, not an external
+   one — a later step).
    Run `scripts/spike.sh` on the VM (reads env vars only) to exercise `GET /health` + one
    `POST /message` before Nov 4. **Spike questions — answered in source @ `a620ab6`; confirm live:**
    - **S1 — Does posting as `tripwire` echo back to the Console-run `tripwire` session? NO.** An
@@ -166,6 +170,11 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — **Room-posting spike PASSED on the live stack (Day 1 unit 1).** Registered an external
+  `tripwire` agent in the Gateway, added it to `launch-room`, and posted via
+  `POST /agents/{id}/message` → `{"ok":true,...}`, message rendered in Discord `#launch-room` under the
+  `tripwire` name. Path A (the preferred room-poster) is confirmed working; the biggest project risk is
+  retired. This was done by hand (curl) to validate — the watcher will automate it in feature code.
 - 2026-11-01 — Live deploy: Switch Core `0.31.0` is up (switch/gateway/postgres healthy, init-db exits as
   designed); Gateway admin reachable at `localhost:3000`, "System healthy". Finding: the **Gateway web UI**
   covers the spike path in-browser — Apps → `/collaborations` ("Register messaging app") connects Discord,
