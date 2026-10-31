@@ -152,9 +152,11 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
      setup-video "who can talk to your agent = anyone" note). Choices:
      `owner_only | owner_and_owner_agents | anyone | custom`.
      (`core/switch_core/addressing.py:41,276-306,309`.)
-2. **Core loop model + state machine (pure) + tests.** `src/core`: Loop/Condition types, the state
-   machine (proposed→armed→fired→closed; rejected transitions throw `InvalidTransition`), typed errors.
-   Test every allowed and rejected transition. No I/O, no clock (pass `now` in).
+2. **Core loop model + state machine (pure) + tests. ✅ DONE 2026-11-01.** `src/core`: `types.ts`
+   (Loop/Condition + enums), `errors.ts` (`TripwireError`/`InvalidTransition`), `stateMachine.ts`
+   (pure `applyTransition`/`canApply`), `loop.ts` (`createLoop` factory; agent_block self-arms when
+   waiter==creator). 26 tests green (every allowed + rejected transition, no-mutation, factory cases).
+   No I/O, no clock reads.
 3. **SQLite store + migrations.** `src/store`: schema for loops/conditions/events/firings/audit
    (architecture.md), WAL mode, migrations on startup, `firings.loop_id` unique (I1), transaction
    helper. Test migrations + the fire-once unique constraint.
@@ -170,6 +172,9 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — BUILD STARTED. Day 1 unit 2 done: pure core loop model + state machine in `src/core`
+  (`types`, `errors`, `stateMachine`, `loop`) with 26 passing tests covering every allowed and rejected
+  transition and the create-loop factory. typecheck/test/lint green. First feature code.
 - 2026-11-01 — **Room-posting spike PASSED on the live stack (Day 1 unit 1).** Registered an external
   `tripwire` agent in the Gateway, added it to `launch-room`, and posted via
   `POST /agents/{id}/message` → `{"ok":true,...}`, message rendered in Discord `#launch-room` under the
