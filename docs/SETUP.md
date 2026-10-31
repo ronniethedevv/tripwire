@@ -122,8 +122,11 @@ Switch publishes an all-in-one Docker Compose stack as an OCI artifact; it is a 
    docker compose -f standalone-docker-compose.yml up -d
    docker compose -f standalone-docker-compose.yml ps     # services Up/healthy
    ```
-   If Docker says "permission denied", log out of the VM and back in (so the `docker` group applies), or
-   prefix the command with `sudo`.
+   Harmless `MATTERMOST_* variable is not set` warnings are expected — those services are in the
+   unused `collab` profile. If Docker says **"permission denied"**, log out and back in (so the `docker`
+   group applies) or prefix with `sudo`. If it says **"Cannot connect to the Docker daemon"**, the daemon
+   isn't running: on a systemd VM `sudo systemctl start docker`; on WSL (no systemd) `sudo service docker
+   start`, or `sudo dockerd >/tmp/dockerd.log 2>&1 &` then `sudo docker ps` to confirm.
 5. The three URLs (`self-host.md:61`; `/health` + `/agents` live on the bridge app
    `core/switch_core/main.py:1241`, `core/switch_core/bridges/agent/app.py:162-168`; Gateway mount
    `core/switch_core/gateway/app.py:212`):
