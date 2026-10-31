@@ -1,0 +1,38 @@
+{
+  "name": "tripwire",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A teammate in a Switch room that holds every \"not now, when X\" and wakes whoever was waiting the moment X happens.",
+  "type": "module",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "dev:watcher": "tsx watch src/watcher/index.ts",
+    "dev:mcp": "tsx src/mcp/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@octokit/rest": "^21.0.2",
+    "@octokit/webhooks-methods": "^5.1.0",
+    "better-sqlite3": "^11.7.0",
+    "hono": "^4.6.14",
+    "pino": "^9.5.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20.17.10",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8"
+  }
+}
