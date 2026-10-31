@@ -166,6 +166,13 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — Live deploy: Switch Core `0.31.0` is up (switch/gateway/postgres healthy, init-db exits as
+  designed); Gateway admin reachable at `localhost:3000`, "System healthy". Finding: the **Gateway web UI**
+  covers the spike path in-browser — Apps → `/collaborations` ("Register messaging app") connects Discord,
+  `/agents` registers agents (incl. external `session_passive`), `/registration-keys` manages/reveals API
+  keys. So the **desktop Switch Console is optional for the spike**; it's still needed later to run
+  tripwire/builder as live Claude Code sessions. Env runs in WSL on the laptop for now — move to the
+  always-on VM before demo day (risk table).
 - 2026-11-01 — Corrected `docs/SETUP.md` section B against the real `standalone-compose:0.31.0` during a
   live VM deploy: the `oras` artifact ships only the compose yml (no `.env.example`), so the runbook now
   gives a ready-to-paste `.env` with `openssl`-generated secrets; the key-guarding secret is `SECRET_KEYS`
