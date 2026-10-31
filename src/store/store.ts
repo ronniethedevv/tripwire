@@ -64,6 +64,54 @@ function rowToLoop(row: unknown): Loop {
   };
 }
 
+const eventRowSchema = z.object({
+  id: z.string(),
+  source: z.string(),
+  type: z.string(),
+  repo: z.string().nullable(),
+  number_or_ref: z.string().nullable(),
+  dedupe_key: z.string(),
+  payload_path: z.string().nullable(),
+  received_at: z.number(),
+});
+
+export interface StoredEvent {
+  readonly id: string;
+  readonly source: string;
+  readonly type: string;
+  readonly repo: string | null;
+  readonly numberOrRef: string | null;
+  readonly dedupeKey: string;
+  readonly payloadPath: string | null;
+  readonly receivedAt: number;
+}
+
+function rowToEvent(row: unknown): StoredEvent {
+  const r = eventRowSchema.parse(row);
+  return {
+    id: r.id,
+    source: r.source,
+    type: r.type,
+    repo: r.repo,
+    numberOrRef: r.number_or_ref,
+    dedupeKey: r.dedupe_key,
+    payloadPath: r.payload_path,
+    receivedAt: r.received_at,
+  };
+}
+
+export interface InsertEventInput {
+  readonly source: string;
+  readonly type: string;
+  readonly repo: string | null;
+  readonly numberOrRef: string | null;
+  readonly dedupeKey: string;
+  readonly payloadPath: string | null;
+  readonly receivedAt: number;
+}
+
+export type EventInsertResult = 'stored' | 'duplicate';
+
 export type FiringResult = 'fired' | 'already_fired';
 
 export interface RecordFiringInput {
@@ -171,6 +219,35 @@ export class Store {
       this.appendAudit({ at: input.firedAt, actor: 'watcher', action: 'fire', loopId: input.loopId });
       return 'fired';
     });
+  }
+
+  /**
+   * Store a normalised source event, deduped on dedupe_key (the webhook delivery
+   * id). A repeated delivery is ignored and reported as 'duplicate'. (I3: the
+   * webhook handler only validates, stores and returns — no checking here.)
+   */
+  insertEvent(input: InsertEventInput): EventInsertResult {
+    const res = this.db
+      .prepare(
+        `INSERT OR IGNORE INTO events (id, source, type, repo, number_or_ref, dedupe_key, payload_path, received_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        randomUUID(),
+        input.source,
+        input.type,
+        input.repo,
+        input.numberOrRef,
+        input.dedupeKey,
+        input.payloadPath,
+        input.receivedAt,
+      );
+    return res.changes === 0 ? 'duplicate' : 'stored';
+  }
+
+  getEventByDedupeKey(dedupeKey: string): StoredEvent | null {
+    const row = this.db.prepare('SELECT * FROM events WHERE dedupe_key = ?').get(dedupeKey);
+    return row === undefined ? null : rowToEvent(row);
   }
 
   appendAudit(input: AuditInput): void {

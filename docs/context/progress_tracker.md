@@ -163,9 +163,13 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    zod row-validation at the DB boundary, `transaction` helper, `insertLoop`/`getLoop`/`listLoops`,
    `recordFiring` (one transaction, insert-or-ignore → fired|already_fired), `appendAudit`). 8 tests
    including fire-once across two connections to one file. tsconfig gained `esModuleInterop`.
-4. **GitHub webhook ingest (Hono) → events table.** `src/watcher`: validate signature
-   (`@octokit/webhooks-methods`) + zod, dedupe on delivery id, store, return 200 immediately — no
-   GitHub calls / no posts / no LLM in the request (I3). Test signature-reject, dedupe, store-and-return.
+4. **GitHub webhook ingest (Hono) → events table. ✅ DONE 2026-11-01.** `src/watcher/githubWebhook.ts`:
+   pure `normalizeGithubEvent` (pull_request/issues/check_suite/check_run → repo+number/ref, else null)
+   + `createWebhookApp` (verify `x-hub-signature-256` via `@octokit/webhooks-methods`, safe delivery-id,
+   write raw payload to a file, `store.insertEvent` deduped on delivery id, return 200 — no GitHub
+   calls / posts / model work in the request, I3). Added `Store.insertEvent`/`getEventByDedupeKey` and a
+   shared redacting pino `src/logger.ts`. 10 tests (normaliser + handler: signature-reject, dedupe,
+   store-and-return with payload-on-disk, unknown-event, missing-headers). 44 tests green total.
 5. **`github.pr_merged` condition (pure) + GitHub source client.** `src/conditions/pr_merged.ts`
    params schema + `evaluate()→true|false|unobserved`; `src/sources` Octokit client with 3× backoff
    (1s/4s/16s) → unobserved on failure (I2). Test true/false/unobserved.
@@ -175,6 +179,10 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — Day 1 unit 4 done: GitHub webhook endpoint (`src/watcher/githubWebhook.ts`, Hono) that
+  verifies the signature, normalises + stores the event deduped on delivery id, and returns 200 with no
+  checking in the request (I3). Added events-table store access and a shared redacting logger. 44 tests
+  green. typecheck/test/lint green.
 - 2026-11-01 — Day 1 unit 3 done: SQLite store + migrations in `src/store` (WAL, 5-table schema, zod
   row-validation, transaction helper, fire-once `recordFiring`, audit). 34 tests green total, incl.
   fire-once across two connections. typecheck/test/lint green.
