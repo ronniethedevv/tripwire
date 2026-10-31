@@ -1,20 +1,32 @@
 // Core domain types for Tripwire loops. Pure data — no I/O, no clock, no zod.
 // The per-condition params schemas live in src/conditions (validated there).
 
-export type LoopKind = 'decision' | 'agent_block';
-export type WaiterType = 'human' | 'agent';
-export type LoopStatus = 'proposed' | 'armed' | 'fired' | 'closed';
-export type CloseReason = 'resolved' | 'cancelled' | 'expired';
+// Const tuples are the single source of truth: the union types derive from them,
+// and the store's zod row schemas reuse the same arrays, so they can't drift.
+export const LOOP_KINDS = ['decision', 'agent_block'] as const;
+export type LoopKind = (typeof LOOP_KINDS)[number];
+
+export const WAITER_TYPES = ['human', 'agent'] as const;
+export type WaiterType = (typeof WAITER_TYPES)[number];
+
+export const LOOP_STATUSES = ['proposed', 'armed', 'fired', 'closed'] as const;
+export type LoopStatus = (typeof LOOP_STATUSES)[number];
+
+export const CLOSE_REASONS = ['resolved', 'cancelled', 'expired'] as const;
+export type CloseReason = (typeof CLOSE_REASONS)[number];
 
 /** The result of evaluating a condition. `unobserved` is never treated as true or false. */
-export type ConditionState = 'true' | 'false' | 'unobserved';
+export const CONDITION_STATES = ['true', 'false', 'unobserved'] as const;
+export type ConditionState = (typeof CONDITION_STATES)[number];
 
-export type ConditionType =
-  | 'github.pr_merged'
-  | 'github.issue_closed'
-  | 'github.checks_green'
-  | 'usage.count_at_least'
-  | 'time.after';
+export const CONDITION_TYPES = [
+  'github.pr_merged',
+  'github.issue_closed',
+  'github.checks_green',
+  'usage.count_at_least',
+  'time.after',
+] as const;
+export type ConditionType = (typeof CONDITION_TYPES)[number];
 
 /** A loop's unblock condition: its type tag plus opaque params (shape checked in src/conditions). */
 export interface Condition {

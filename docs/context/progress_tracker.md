@@ -157,9 +157,12 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    (pure `applyTransition`/`canApply`), `loop.ts` (`createLoop` factory; agent_block self-arms when
    waiter==creator). 26 tests green (every allowed + rejected transition, no-mutation, factory cases).
    No I/O, no clock reads.
-3. **SQLite store + migrations.** `src/store`: schema for loops/conditions/events/firings/audit
-   (architecture.md), WAL mode, migrations on startup, `firings.loop_id` unique (I1), transaction
-   helper. Test migrations + the fire-once unique constraint.
+3. **SQLite store + migrations. ✅ DONE 2026-11-01.** `src/store`: `migrations.ts` (versioned runner +
+   the 5-table schema — loops/conditions/events/firings/audit — with `firings.loop_id` PK for fire-once
+   (I1), `conditions.loop_id` UNIQUE, `events.dedupe_key` UNIQUE) and `store.ts` (WAL + foreign keys,
+   zod row-validation at the DB boundary, `transaction` helper, `insertLoop`/`getLoop`/`listLoops`,
+   `recordFiring` (one transaction, insert-or-ignore → fired|already_fired), `appendAudit`). 8 tests
+   including fire-once across two connections to one file. tsconfig gained `esModuleInterop`.
 4. **GitHub webhook ingest (Hono) → events table.** `src/watcher`: validate signature
    (`@octokit/webhooks-methods`) + zod, dedupe on delivery id, store, return 200 immediately — no
    GitHub calls / no posts / no LLM in the request (I3). Test signature-reject, dedupe, store-and-return.
@@ -172,6 +175,9 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — Day 1 unit 3 done: SQLite store + migrations in `src/store` (WAL, 5-table schema, zod
+  row-validation, transaction helper, fire-once `recordFiring`, audit). 34 tests green total, incl.
+  fire-once across two connections. typecheck/test/lint green.
 - 2026-11-01 — BUILD STARTED. Day 1 unit 2 done: pure core loop model + state machine in `src/core`
   (`types`, `errors`, `stateMachine`, `loop`) with 26 passing tests covering every allowed and rejected
   transition and the create-loop factory. typecheck/test/lint green. First feature code.
