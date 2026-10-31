@@ -115,6 +115,39 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    bridge base URL, then `POST /agents/{id}/message {room_id, content}` lands a plain message in
    `#launch-room`; confirm waking by posting a message that mentions `@builder`. Record the winner +
    any transport/addressing gotchas here. (De-risks everything; biggest risk first.)
+   Run `scripts/spike.sh` on the VM (reads env vars only) to exercise `GET /health` + one
+   `POST /message` before Nov 4. **Spike questions — answered in source @ `a620ab6`; confirm live:**
+   - **S1 — Does posting as `tripwire` echo back to the Console-run `tripwire` session? NO.** An
+     agent's own posts are excluded from its own stream: room messages "it sent" are classified "not
+     conversation for this agent" and the stream advances past them without delivery — independent of
+     `filter`. So path A posting as `tripwire` creates no self-loop and needs **no separate identity**
+     for loop-safety. (`core/switch_core/bridges/agent/protocol/stream.py:465-473`; "own events" are
+     "events meant for the agent, not ones it sent" `.../protocol/message_events.py:4-6`;
+     `console/packages/switch-agent-runtime/src/positions.ts:9,18-20`.) A separate `tripwire-watcher`
+     identity is only wanted if we ever want the `tripwire` *session* to react to a watcher post —
+     which we don't (the watcher writes cards deterministically). Fallback if live behaviour differs:
+     register `tripwire-watcher` as its own agent (see S2 registration-token path) and post as it.
+   - **S2 — API key issue/store/export for a Console-registered agent.** Minted once as
+     `secrets.token_urlsafe(32)`; stored BOTH as a SHA-256 hash (auth lookup) AND keyring-encrypted
+     (`encrypted_key`). Agent keys are NOT hash-only (only `controller`/`controller_enrollment` are),
+     so the owner can get the plaintext to the VM three ways: (a) capture it at registration (returned
+     once), (b) reveal it later via Gateway `GET /api-keys/{key_id}/reveal` (owner-only → 403
+     otherwise, audited `API_KEY_REVEALED`), or (c) rotate by re-registering with `overwrite=True`.
+     Store it in VM env as `SWITCH_AGENT_API_KEY`. (`.../protocol/agent_core.py:513-515,517-528`;
+     reveal `core/switch_core/gateway/api_keys.py:114-139`; `HASH_ONLY_KEY_TYPES`
+     `core/switch_core/db/models.py:3780`; auth-by-hash `.../bridges/agent/auth.py:481-504`.)
+     **Fallback (no Console reveal needed): register the watcher as its own custom agent via a
+     registration token** — `POST /agents/register-known` (bearer = the registration token) returns
+     `{id, api_key}` once; keep that key in VM env. (`docs/official/internals/agent-protocol.md:331`.)
+     Note the reveal route is on the **Gateway**, not the agent bridge — different host.
+   - **S3 — Same-owner addressing default + reliable agent-to-agent mentions.** Every new agent
+     (registration, `create_agent`, template runs, Switch Console) defaults to
+     `owner_and_owner_agents`: the owner plus any agent that owner runs. So `tripwire` and `builder`,
+     sharing one owner, can address each other with **no setting change**. For a cross-owner /
+     multi-vendor agent, set the policy to `anyone` (an agent with no rules is open — matches the
+     setup-video "who can talk to your agent = anyone" note). Choices:
+     `owner_only | owner_and_owner_agents | anyone | custom`.
+     (`core/switch_core/addressing.py:41,276-306,309`.)
 2. **Core loop model + state machine (pure) + tests.** `src/core`: Loop/Condition types, the state
    machine (proposed→armed→fired→closed; rejected transitions throw `InvalidTransition`), typed errors.
    Test every allowed and rejected transition. No I/O, no clock (pass `now` in).
