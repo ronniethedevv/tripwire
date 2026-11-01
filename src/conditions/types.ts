@@ -1,8 +1,9 @@
 import type { ConditionState } from '../core/index.js';
 
-/** A link + timestamp proving what was observed (I4). Null only when unobserved. */
+/** A link + timestamp proving what was observed (I4). `url` is null for sourceless
+ * conditions like the clock, where the timestamp itself is the evidence. */
 export interface Evidence {
-  readonly url: string;
+  readonly url: string | null;
   readonly observedAt: number;
   readonly description: string;
 }

@@ -145,6 +145,61 @@ describe('Evaluator.checkLoop', () => {
   });
 });
 
+function insertArmedTimeAfter(at: string, id = 't1'): void {
+  const proposed = createLoop(
+    {
+      id,
+      roomId: 'room-1',
+      kind: 'decision',
+      title: 'check back on the RFC',
+      reason: "we'll revisit next month",
+      waiterType: 'human',
+      waiterHandle: '@alice',
+      ownerHandle: '@alice',
+      createdBy: '@alice',
+      condition: { type: 'time.after', params: { at } },
+    },
+    1000,
+  );
+  store.insertLoop(applyTransition(proposed, { type: 'arm', by: '@alice', at: 1100 }));
+}
+
+describe('Evaluator.checkLoop — time.after', () => {
+  it('fires once the time has passed', async () => {
+    const at = '2026-01-01T00:00:00.000Z';
+    insertArmedTimeAfter(at);
+    const poster = new FakePoster();
+    const ev = new Evaluator({
+      store,
+      github: githubReturning(false),
+      poster,
+      now: () => Date.parse(at) + 1000,
+      zone: 'UTC',
+      logger: silent,
+    });
+
+    expect(await ev.checkLoop(armed())).toBe('fired');
+    expect(store.getLoop('t1')?.status).toBe('fired');
+    expect(poster.posts[0]?.content).toContain('check back on the RFC');
+  });
+
+  it('does not fire before the time', async () => {
+    const at = '2030-01-01T00:00:00.000Z';
+    insertArmedTimeAfter(at);
+    const poster = new FakePoster();
+    const ev = new Evaluator({
+      store,
+      github: githubReturning(false),
+      poster,
+      now: () => Date.parse(at) - 1000,
+      logger: silent,
+    });
+
+    expect(await ev.checkLoop(armed())).toBe('not_true');
+    expect(poster.posts).toHaveLength(0);
+  });
+});
+
 describe('Evaluator.onEvent', () => {
   it('checks only loops whose condition matches the event repo + ref', async () => {
     insertArmedDecision(); // owner/repo #3

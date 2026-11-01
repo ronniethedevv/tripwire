@@ -1,4 +1,10 @@
-import { evaluatePrMerged, parsePrMergedParams, type Evaluation } from '../conditions/index.js';
+import {
+  evaluatePrMerged,
+  evaluateTimeAfter,
+  parsePrMergedParams,
+  parseTimeAfterParams,
+  type Evaluation,
+} from '../conditions/index.js';
 import type { Loop } from '../core/index.js';
 import { logger as defaultLogger, type Logger } from '../logger.js';
 import { renderAgentWakeNote, renderReopenCard, type RoomPoster } from '../room/index.js';
@@ -11,7 +17,7 @@ export interface EventTarget {
   readonly numberOrRef: string;
 }
 
-export type CheckOutcome = 'fired' | 'already_fired' | 'not_true' | 'unobserved' | 'unsupported';
+export type CheckOutcome = 'fired' | 'already_fired' | 'not_true' | 'unobserved';
 
 /** Whether an armed loop's condition is about the thing this event touched. Pure. */
 export function loopMatchesTarget(loop: Loop, target: EventTarget): boolean {
@@ -57,13 +63,17 @@ export class Evaluator {
     return this.deps.logger ?? defaultLogger;
   }
 
-  /** Live-fetch the loop's condition and evaluate it. */
+  /** Live-fetch the loop's condition and evaluate it. An unwired type reads as unobserved. */
   private async observe(loop: Loop): Promise<Evaluation> {
     switch (loop.condition.type) {
       case 'github.pr_merged': {
         const params = parsePrMergedParams(loop.condition.params);
         const snapshot = await this.deps.github.fetchPrMerged(params.repo, params.number);
         return evaluatePrMerged(params, snapshot);
+      }
+      case 'time.after': {
+        const params = parseTimeAfterParams(loop.condition.params);
+        return evaluateTimeAfter(params, this.now());
       }
       default:
         return { state: 'unobserved', evidence: null };
@@ -72,10 +82,6 @@ export class Evaluator {
 
   /** Re-check one armed loop live and fire it exactly once if the condition is true. */
   async checkLoop(loop: Loop): Promise<CheckOutcome> {
-    if (loop.condition.type !== 'github.pr_merged') {
-      return 'unsupported'; // other condition types land in Day 3
-    }
-
     const evaluation = await this.observe(loop);
     if (evaluation.state === 'unobserved') {
       return 'unobserved';

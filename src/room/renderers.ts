@@ -15,9 +15,10 @@ export function formatInstant(epochMs: number, zone: string): string {
 
 /** The reopen card for a fired decision loop (ui_context.md). */
 export function renderReopenCard(loop: Loop, evidence: Evidence, zone: string): string {
+  const link = evidence.url !== null ? ` — ${evidence.url}` : '';
   const lines = [
     `🔔 Ready to decide: ${loop.title}`,
-    `What changed: ${evidence.description} — ${evidence.url} (${formatInstant(evidence.observedAt, zone)})`,
+    `What changed: ${evidence.description}${link} (${formatInstant(evidence.observedAt, zone)})`,
     `Why we waited: ${loop.reason}`,
     `Decide: ${loop.ownerHandle}`,
   ];
@@ -29,7 +30,8 @@ export function renderReopenCard(loop: Loop, evidence: Evidence, zone: string): 
 
 /** The wake note for a fired agent_block loop (ui_context.md). */
 export function renderAgentWakeNote(loop: Loop, evidence: Evidence): string {
-  return `${loop.waiterHandle} you're unblocked: ${evidence.description} — ${evidence.url}. Resume: ${loop.title}.`;
+  const link = evidence.url !== null ? ` — ${evidence.url}` : '';
+  return `${loop.waiterHandle} you're unblocked: ${evidence.description}${link}. Resume: ${loop.title}.`;
 }
 
 /** The proposal card that asks a human to confirm a drafted loop (ui_context.md). */
