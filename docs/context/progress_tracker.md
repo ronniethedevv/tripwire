@@ -11,7 +11,9 @@
       (2026-11-01: all 5 conditions done + evaluator dispatch; transcript extraction = propose_loops;
       hardening (fire-once/live re-check/retries/redaction) already in place; CI exists. Remaining:
       CodeRabbit config (optional) + backup video (manual). 118 tests green.)
-- [ ] Day 4 (Nov 7) — feature freeze at noon; README; demo video; submission
+- [~] Day 4 (Nov 7) — feature freeze at noon; README; demo video; submission
+      (2026-11-01: full submission README written — problem evidence, architecture diagram, invariants,
+      live-proven status, how to run. Remaining: demo video + submission.)
 
 ## Demo script (must pass three runs in a row)
 1. Paste a Rust lang-team excerpt (move-ref pattern: "stabilize once the ecosystem uses it");
@@ -192,6 +194,9 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — Day 4 README written: full submission README (pitch, problem evidence ~25 deferrals vs
+  ~10 decisions, the open-loop model, all 5 conditions, a Mermaid architecture diagram, the I1–I7
+  invariants, live-proven status, and how to run / see it fire). Replaces the Phase-0 scaffold README.
 - 2026-11-01 — Day 3 conditions complete. Added `usage.count_at_least` (code search summed across the
   watched repos; any unreadable repo → unobserved so a partial count never fires, I2), plus
   `issue_closed`/`checks_green`/`time.after`. All five condition types are implemented and dispatched by
