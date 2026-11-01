@@ -1,6 +1,10 @@
 import {
+  evaluateChecksGreen,
+  evaluateIssueClosed,
   evaluatePrMerged,
   evaluateTimeAfter,
+  parseChecksGreenParams,
+  parseIssueClosedParams,
   parsePrMergedParams,
   parseTimeAfterParams,
   type Evaluation,
@@ -70,6 +74,16 @@ export class Evaluator {
         const params = parsePrMergedParams(loop.condition.params);
         const snapshot = await this.deps.github.fetchPrMerged(params.repo, params.number);
         return evaluatePrMerged(params, snapshot);
+      }
+      case 'github.issue_closed': {
+        const params = parseIssueClosedParams(loop.condition.params);
+        const snapshot = await this.deps.github.fetchIssueClosed(params.repo, params.number);
+        return evaluateIssueClosed(params, snapshot);
+      }
+      case 'github.checks_green': {
+        const params = parseChecksGreenParams(loop.condition.params);
+        const snapshot = await this.deps.github.fetchChecksGreen(params.repo, params.ref);
+        return evaluateChecksGreen(params, snapshot);
       }
       case 'time.after': {
         const params = parseTimeAfterParams(loop.condition.params);

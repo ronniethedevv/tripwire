@@ -1,9 +1,17 @@
 import pino from 'pino';
 import { describe, expect, it, vi } from 'vitest';
-import { GithubClient, withRetry, type FetchPullRequest } from '../../src/sources/index.js';
+import { GithubClient, withRetry, type GithubFetchers } from '../../src/sources/index.js';
 
 const silent = pino({ level: 'silent' });
 const noSleep = async (): Promise<void> => {};
+
+function fetchers(over: Partial<GithubFetchers> = {}): GithubFetchers {
+  return {
+    pullRequest: over.pullRequest ?? (async () => { throw new Error('no pullRequest stub'); }),
+    issue: over.issue ?? (async () => { throw new Error('no issue stub'); }),
+    checks: over.checks ?? (async () => { throw new Error('no checks stub'); }),
+  };
+}
 
 describe('withRetry', () => {
   it('returns the first success without sleeping', async () => {
@@ -32,12 +40,9 @@ describe('withRetry', () => {
       delays.push(ms);
     };
     await expect(
-      withRetry(
-        async () => {
-          throw new Error('down');
-        },
-        { sleep },
-      ),
+      withRetry(async () => {
+        throw new Error('down');
+      }, { sleep }),
     ).rejects.toThrow('down');
     expect(delays).toEqual([1000, 4000, 16000]);
   });
@@ -45,8 +50,10 @@ describe('withRetry', () => {
 
 describe('GithubClient.fetchPrMerged', () => {
   it('reports observed + merged with a timestamp on success', async () => {
-    const fetchPr: FetchPullRequest = async () => ({ merged: true, htmlUrl: 'https://gh/pr/3' });
-    const client = new GithubClient(fetchPr, { now: () => 777, sleep: noSleep, logger: silent });
+    const client = new GithubClient(
+      fetchers({ pullRequest: async () => ({ merged: true, htmlUrl: 'https://gh/pr/3' }) }),
+      { now: () => 777, sleep: noSleep, logger: silent },
+    );
     expect(await client.fetchPrMerged('owner/repo', 3)).toEqual({
       observed: true,
       merged: true,
@@ -56,17 +63,63 @@ describe('GithubClient.fetchPrMerged', () => {
   });
 
   it('passes the parsed owner/repo/number through to the fetch', async () => {
-    const fetchPr = vi.fn<FetchPullRequest>(async () => ({ merged: false, htmlUrl: 'u' }));
-    const client = new GithubClient(fetchPr, { sleep: noSleep, logger: silent });
+    const pullRequest = vi.fn(async () => ({ merged: false, htmlUrl: 'u' }));
+    const client = new GithubClient(fetchers({ pullRequest }), { sleep: noSleep, logger: silent });
     await client.fetchPrMerged('acme/widgets', 42);
-    expect(fetchPr).toHaveBeenCalledWith('acme', 'widgets', 42);
+    expect(pullRequest).toHaveBeenCalledWith('acme', 'widgets', 42);
   });
 
   it('returns an unobserved snapshot when GitHub cannot be reached (never a false false)', async () => {
-    const fetchPr: FetchPullRequest = async () => {
-      throw new Error('ETIMEDOUT');
-    };
-    const client = new GithubClient(fetchPr, { sleep: noSleep, logger: silent });
+    const client = new GithubClient(
+      fetchers({ pullRequest: async () => { throw new Error('ETIMEDOUT'); } }),
+      { sleep: noSleep, logger: silent },
+    );
     expect(await client.fetchPrMerged('owner/repo', 3)).toEqual({ observed: false });
+  });
+});
+
+describe('GithubClient.fetchIssueClosed', () => {
+  it('maps the closed state', async () => {
+    const client = new GithubClient(
+      fetchers({ issue: async () => ({ closed: true, htmlUrl: 'https://gh/i/7' }) }),
+      { now: () => 1, sleep: noSleep, logger: silent },
+    );
+    expect(await client.fetchIssueClosed('owner/repo', 7)).toEqual({
+      observed: true,
+      closed: true,
+      url: 'https://gh/i/7',
+      observedAt: 1,
+    });
+  });
+
+  it('is unobserved when the fetch fails', async () => {
+    const client = new GithubClient(
+      fetchers({ issue: async () => { throw new Error('down'); } }),
+      { sleep: noSleep, logger: silent },
+    );
+    expect(await client.fetchIssueClosed('owner/repo', 7)).toEqual({ observed: false });
+  });
+});
+
+describe('GithubClient.fetchChecksGreen', () => {
+  it('maps the allGreen flag', async () => {
+    const client = new GithubClient(
+      fetchers({ checks: async () => ({ allGreen: true, htmlUrl: 'https://gh/commits/abc' }) }),
+      { now: () => 1, sleep: noSleep, logger: silent },
+    );
+    expect(await client.fetchChecksGreen('owner/repo', 'abc')).toEqual({
+      observed: true,
+      allGreen: true,
+      url: 'https://gh/commits/abc',
+      observedAt: 1,
+    });
+  });
+
+  it('is unobserved when the fetch fails', async () => {
+    const client = new GithubClient(
+      fetchers({ checks: async () => { throw new Error('down'); } }),
+      { sleep: noSleep, logger: silent },
+    );
+    expect(await client.fetchChecksGreen('owner/repo', 'abc')).toEqual({ observed: false });
   });
 });

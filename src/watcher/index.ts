@@ -2,7 +2,7 @@
 // posting into the room via Path A. Run with `npm run dev:watcher`.
 import { serve } from '@hono/node-server';
 import { logger } from '../logger.js';
-import { GithubClient, octokitFetchPullRequest } from '../sources/index.js';
+import { GithubClient, octokitFetchers } from '../sources/index.js';
 import { SwitchAgentPoster } from '../room/index.js';
 import { openStore } from '../store/index.js';
 import { loadConfig } from './config.js';
@@ -12,7 +12,7 @@ import { createWebhookApp } from './githubWebhook.js';
 function main(): void {
   const config = loadConfig(process.env);
   const store = openStore(config.DATABASE_PATH);
-  const github = new GithubClient(octokitFetchPullRequest(config.GITHUB_TOKEN_READONLY ?? ''));
+  const github = new GithubClient(octokitFetchers(config.GITHUB_TOKEN_READONLY ?? ''));
   const poster = new SwitchAgentPoster({
     bridgeUrl: config.SWITCH_BRIDGE_URL,
     agentId: config.SWITCH_AGENT_ID,

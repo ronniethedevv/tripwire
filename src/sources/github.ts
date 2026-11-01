@@ -1,5 +1,9 @@
 import { Octokit } from '@octokit/rest';
-import type { PrMergedSnapshot } from '../conditions/index.js';
+import type {
+  ChecksGreenSnapshot,
+  IssueClosedSnapshot,
+  PrMergedSnapshot,
+} from '../conditions/index.js';
 import { logger as defaultLogger, type Logger } from '../logger.js';
 import { withRetry } from './retry.js';
 
@@ -7,9 +11,21 @@ export interface PullRequestState {
   readonly merged: boolean;
   readonly htmlUrl: string;
 }
+export interface IssueState {
+  readonly closed: boolean;
+  readonly htmlUrl: string;
+}
+export interface ChecksState {
+  readonly allGreen: boolean;
+  readonly htmlUrl: string;
+}
 
-/** The low-level fetch, split out so tests can stub it without network. */
-export type FetchPullRequest = (owner: string, repo: string, number: number) => Promise<PullRequestState>;
+/** The low-level fetches, split out so tests can stub them without network. */
+export interface GithubFetchers {
+  readonly pullRequest: (owner: string, repo: string, number: number) => Promise<PullRequestState>;
+  readonly issue: (owner: string, repo: string, number: number) => Promise<IssueState>;
+  readonly checks: (owner: string, repo: string, ref: string) => Promise<ChecksState>;
+}
 
 export interface GithubClientOptions {
   readonly now?: () => number;
@@ -25,38 +41,74 @@ function splitRepo(repo: string): readonly [string, string] {
 
 /** Reads GitHub for condition checks. Network failure becomes `unobserved`, never a false `false` (I2). */
 export class GithubClient {
-  private readonly fetchPr: FetchPullRequest;
+  private readonly fetchers: GithubFetchers;
   private readonly opts: GithubClientOptions;
 
-  constructor(fetchPr: FetchPullRequest, opts: GithubClientOptions = {}) {
-    this.fetchPr = fetchPr;
+  constructor(fetchers: GithubFetchers, opts: GithubClientOptions = {}) {
+    this.fetchers = fetchers;
     this.opts = opts;
+  }
+
+  private now(): number {
+    return (this.opts.now ?? Date.now)();
+  }
+
+  /** Retry then, on persistent failure, return null (the caller maps that to unobserved). */
+  private async tryFetch<T>(fn: () => Promise<T>, what: string): Promise<T | null> {
+    try {
+      return await withRetry(fn, {
+        retries: this.opts.retries ?? 3,
+        ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
+      });
+    } catch (error) {
+      (this.opts.logger ?? defaultLogger).warn(
+        { what, error: error instanceof Error ? error.message : String(error) },
+        'github source unobserved after retries',
+      );
+      return null;
+    }
   }
 
   async fetchPrMerged(repo: string, pullNumber: number): Promise<PrMergedSnapshot> {
     const [owner, name] = splitRepo(repo);
-    const now = this.opts.now ?? Date.now;
-    try {
-      const pr = await withRetry(() => this.fetchPr(owner, name, pullNumber), {
-        retries: this.opts.retries ?? 3,
-        ...(this.opts.sleep ? { sleep: this.opts.sleep } : {}),
-      });
-      return { observed: true, merged: pr.merged, url: pr.htmlUrl, observedAt: now() };
-    } catch (error) {
-      (this.opts.logger ?? defaultLogger).warn(
-        { repo, number: pullNumber, error: error instanceof Error ? error.message : String(error) },
-        'github pr unobserved after retries',
-      );
-      return { observed: false };
-    }
+    const pr = await this.tryFetch(() => this.fetchers.pullRequest(owner, name, pullNumber), `pr ${repo}#${pullNumber}`);
+    return pr === null ? { observed: false } : { observed: true, merged: pr.merged, url: pr.htmlUrl, observedAt: this.now() };
+  }
+
+  async fetchIssueClosed(repo: string, issueNumber: number): Promise<IssueClosedSnapshot> {
+    const [owner, name] = splitRepo(repo);
+    const issue = await this.tryFetch(() => this.fetchers.issue(owner, name, issueNumber), `issue ${repo}#${issueNumber}`);
+    return issue === null ? { observed: false } : { observed: true, closed: issue.closed, url: issue.htmlUrl, observedAt: this.now() };
+  }
+
+  async fetchChecksGreen(repo: string, ref: string): Promise<ChecksGreenSnapshot> {
+    const [owner, name] = splitRepo(repo);
+    const checks = await this.tryFetch(() => this.fetchers.checks(owner, name, ref), `checks ${repo}@${ref}`);
+    return checks === null ? { observed: false } : { observed: true, allGreen: checks.allGreen, url: checks.htmlUrl, observedAt: this.now() };
   }
 }
 
-/** Wire a real client from a read-only token. */
-export function octokitFetchPullRequest(token: string): FetchPullRequest {
+const GREEN_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
+
+/** Wire real fetchers from a read-only token. */
+export function octokitFetchers(token: string): GithubFetchers {
   const octokit = new Octokit({ auth: token });
-  return async (owner, repo, pullNumber) => {
-    const res = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
-    return { merged: res.data.merged === true, htmlUrl: res.data.html_url };
+  return {
+    pullRequest: async (owner, repo, pullNumber) => {
+      const res = await octokit.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+      return { merged: res.data.merged === true, htmlUrl: res.data.html_url };
+    },
+    issue: async (owner, repo, issueNumber) => {
+      const res = await octokit.rest.issues.get({ owner, repo, issue_number: issueNumber });
+      return { closed: res.data.state === 'closed', htmlUrl: res.data.html_url };
+    },
+    checks: async (owner, repo, ref) => {
+      const res = await octokit.rest.checks.listForRef({ owner, repo, ref });
+      const runs = res.data.check_runs;
+      const allGreen =
+        runs.length > 0 &&
+        runs.every((c) => c.status === 'completed' && c.conclusion !== null && GREEN_CONCLUSIONS.has(c.conclusion));
+      return { allGreen, htmlUrl: `https://github.com/${owner}/${repo}/commits/${ref}` };
+    },
   };
 }

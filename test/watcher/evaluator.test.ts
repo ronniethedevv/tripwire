@@ -5,7 +5,7 @@ import pino from 'pino';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyTransition, createLoop, type Loop } from '../../src/core/index.js';
 import { type RoomMessageRef, type RoomPoster } from '../../src/room/index.js';
-import { GithubClient, type FetchPullRequest } from '../../src/sources/index.js';
+import { GithubClient, type GithubFetchers } from '../../src/sources/index.js';
 import { openStore, type Store } from '../../src/store/index.js';
 import { Evaluator } from '../../src/watcher/evaluator.js';
 
@@ -20,16 +20,33 @@ class FakePoster implements RoomPoster {
   }
 }
 
+function fetchers(over: Partial<GithubFetchers> = {}): GithubFetchers {
+  return {
+    pullRequest: over.pullRequest ?? (async () => { throw new Error('no pr stub'); }),
+    issue: over.issue ?? (async () => { throw new Error('no issue stub'); }),
+    checks: over.checks ?? (async () => { throw new Error('no checks stub'); }),
+  };
+}
+
 function githubReturning(merged: boolean): GithubClient {
-  const fetchPr: FetchPullRequest = async () => ({ merged, htmlUrl: 'https://github.com/owner/repo/pull/3' });
-  return new GithubClient(fetchPr, { now: () => 500, sleep: noSleep, logger: silent });
+  return new GithubClient(
+    fetchers({ pullRequest: async () => ({ merged, htmlUrl: 'https://github.com/owner/repo/pull/3' }) }),
+    { now: () => 500, sleep: noSleep, logger: silent },
+  );
 }
 
 function githubDown(): GithubClient {
-  const fetchPr: FetchPullRequest = async () => {
-    throw new Error('ETIMEDOUT');
-  };
-  return new GithubClient(fetchPr, { sleep: noSleep, logger: silent });
+  return new GithubClient(
+    fetchers({ pullRequest: async () => { throw new Error('ETIMEDOUT'); } }),
+    { sleep: noSleep, logger: silent },
+  );
+}
+
+function githubIssue(closed: boolean): GithubClient {
+  return new GithubClient(
+    fetchers({ issue: async () => ({ closed, htmlUrl: 'https://github.com/owner/repo/issues/7' }) }),
+    { now: () => 500, sleep: noSleep, logger: silent },
+  );
 }
 
 let dir: string;
@@ -195,6 +212,44 @@ describe('Evaluator.checkLoop — time.after', () => {
       logger: silent,
     });
 
+    expect(await ev.checkLoop(armed())).toBe('not_true');
+    expect(poster.posts).toHaveLength(0);
+  });
+});
+
+function insertArmedIssueClosed(id = 'i1'): void {
+  const proposed = createLoop(
+    {
+      id,
+      roomId: 'room-1',
+      kind: 'decision',
+      title: 'platform RFC decision',
+      reason: 'until the RFC is settled',
+      waiterType: 'human',
+      waiterHandle: '@alice',
+      ownerHandle: '@alice',
+      createdBy: '@alice',
+      condition: { type: 'github.issue_closed', params: { repo: 'owner/repo', number: 7 } },
+    },
+    1000,
+  );
+  store.insertLoop(applyTransition(proposed, { type: 'arm', by: '@alice', at: 1100 }));
+}
+
+describe('Evaluator.checkLoop — github.issue_closed', () => {
+  it('fires when the issue is closed', async () => {
+    insertArmedIssueClosed();
+    const poster = new FakePoster();
+    const ev = new Evaluator({ store, github: githubIssue(true), poster, logger: silent });
+    expect(await ev.checkLoop(armed())).toBe('fired');
+    expect(store.getLoop('i1')?.status).toBe('fired');
+    expect(poster.posts[0]?.content).toContain('platform RFC decision');
+  });
+
+  it('does not fire while the issue is open', async () => {
+    insertArmedIssueClosed();
+    const poster = new FakePoster();
+    const ev = new Evaluator({ store, github: githubIssue(false), poster, logger: silent });
     expect(await ev.checkLoop(armed())).toBe('not_true');
     expect(poster.posts).toHaveLength(0);
   });
