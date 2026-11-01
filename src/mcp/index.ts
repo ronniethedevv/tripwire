@@ -1,11 +1,21 @@
-// Tripwire MCP server entry point (stdio, spawned by the tripwire agent).
-//
-// Phase 0 scaffold: no feature code yet. The MCP tools (propose_loop, arm_loop,
-// list_loops, explain_loop, cancel_loop, resolve_loop) are built on Day 2 —
-// see docs/context/architecture.md and docs/context/progress_tracker.md.
+// Tripwire MCP server (stdio), spawned by the tripwire agent's session.
+// Logs go to STDERR only: stdout is the MCP protocol stream.
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { openStore } from '../store/index.js';
+import { loadMcpConfig } from './config.js';
+import { createMcpServer } from './server.js';
+import { LoopService } from './service.js';
 
-function main(): void {
-  console.log('tripwire mcp server — Phase 0 scaffold, not yet implemented');
+async function main(): Promise<void> {
+  const config = loadMcpConfig(process.env);
+  const store = openStore(config.databasePath);
+  const service = new LoopService({ store, humanHandles: config.humanHandles });
+  const server = createMcpServer(service, { zone: config.zone });
+  await server.connect(new StdioServerTransport());
+  console.error('tripwire mcp server connected (stdio)');
 }
 
-main();
+main().catch((error: unknown) => {
+  console.error('tripwire mcp server failed:', error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

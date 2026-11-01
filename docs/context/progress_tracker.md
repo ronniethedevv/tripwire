@@ -4,7 +4,8 @@
 - [x] Phase 0 — context pack, Switch research, scaffolding (no feature code)
 - [x] Day 1 (Nov 4) — room-posting spike; data model + state machine; webhook ingest + heartbeat;
       PR-merged condition fires a message into the room  (all 6 units done 2026-11-01, 69 tests green)
-- [ ] Day 2 (Nov 5) — MCP tools; confirmation flow; reopen card; agent wake note; ledger
+- [x] Day 2 (Nov 5) — MCP tools; confirmation flow; reopen card; agent wake note; ledger
+      (done 2026-11-01: 7 MCP tools over stdio, human-only arm/cancel on decisions, 88 tests green)
 - [ ] Day 3 (Nov 6) — transcript extraction; usage-count, checks-green, date conditions; hardening;
       CI + CodeRabbit; backup video
 - [ ] Day 4 (Nov 7) — feature freeze at noon; README; demo video; submission
@@ -188,6 +189,12 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — **Day 2 COMPLETE (unit 2).** `src/mcp/server.ts` exposes 7 tools over MCP stdio
+  (propose_loop, propose_loops, arm_loop, list_loops, explain_loop, cancel_loop, resolve_loop),
+  each returning the right ui_context card and surfacing service errors as `isError`. Added
+  `src/mcp/config.ts` (DATABASE_PATH + HUMAN_HANDLES) and a runnable `src/mcp/index.ts` stdio entry
+  that logs to stderr (stdout is the protocol). 5 tests drive it through a real in-memory MCP client.
+  88 tests green; entry wires up at runtime.
 - 2026-11-01 — Day 2 unit 1 done: `LoopService` (`src/mcp/service.ts`) — propose/arm/cancel/resolve/
   list/explain over the store, enforcing HUMAN_HANDLES on decision arm+cancel (`NotAuthorized`), the
   state machine, and an audit row per change. Added `Store.updateLoop`/`getFiring`, `LoopNotFound`,
