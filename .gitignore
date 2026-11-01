@@ -30,3 +30,6 @@ data/
 /tripwire-spec.md
 /agents.md
 /docs/context/
+
+# Local MCP wiring (per-deployment handles/paths); copy from .mcp.json.example
+/.mcp.json
