@@ -250,6 +250,13 @@ export class Store {
     return row === undefined ? null : rowToEvent(row);
   }
 
+  /** Record the room message a firing produced (set after the card is posted). */
+  setFiringMessageRef(loopId: string, roomMessageRef: string): void {
+    this.db
+      .prepare('UPDATE firings SET room_message_ref = ? WHERE loop_id = ?')
+      .run(roomMessageRef, loopId);
+  }
+
   appendAudit(input: AuditInput): void {
     this.db
       .prepare(`INSERT INTO audit (id, at, actor, action, loop_id, detail_json) VALUES (?, ?, ?, ?, ?, ?)`)

@@ -2,8 +2,8 @@
 
 ## Phases
 - [x] Phase 0 — context pack, Switch research, scaffolding (no feature code)
-- [ ] Day 1 (Nov 4) — room-posting spike; data model + state machine; webhook ingest + heartbeat;
-      PR-merged condition fires a message into the room
+- [x] Day 1 (Nov 4) — room-posting spike; data model + state machine; webhook ingest + heartbeat;
+      PR-merged condition fires a message into the room  (all 6 units done 2026-11-01, 69 tests green)
 - [ ] Day 2 (Nov 5) — MCP tools; confirmation flow; reopen card; agent wake note; ledger
 - [ ] Day 3 (Nov 6) — transcript extraction; usage-count, checks-green, date conditions; hardening;
       CI + CodeRabbit; backup video
@@ -177,12 +177,21 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    sleep) and `github.ts` (`GithubClient.fetchPrMerged` → snapshot; network failure → `{observed:false}`
    = unobserved, never a false `false` (I2); Octokit adapter split out so tests stub it). 12 tests
    (all three outcomes + backoff timing asserts [1000,4000,16000] + unobserved-on-failure). 56 green.
-6. **Evaluator + heartbeat wired to the path-A poster — PR-merged fires into the room.** Evaluator
-   picks up armed loops matching an event, live re-check (<60s), fires once in one transaction, posts
-   via the poster; 120s heartbeat re-checks all armed loops. Day-1 goal: merging a watched PR posts in
-   the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
+6. **Evaluator + heartbeat wired to the path-A poster — PR-merged fires into the room. ✅ DONE
+   2026-11-01.** `src/room` (`RoomPoster` + `SwitchAgentPoster` posting via `POST /agents/{id}/message`;
+   reopen-card + agent-wake-note renderers per ui_context.md) and `src/watcher/evaluator.ts`
+   (`checkLoop` live-re-checks then fires once via `recordFiring`, posts the card, records the message
+   ref; `onEvent` matches armed loops to a repo+ref; `runHeartbeat` re-checks all; `startHeartbeat`
+   120s timer). Webhook gained an `onIndexed` deviation hook (fire-and-forget, keeps I3). Added
+   `src/watcher/config.ts` (zod env) and a runnable `src/watcher/index.ts` composition root
+   (serve + heartbeat). 13 tests (poster, renderers, config, evaluator: fire/not-true/unobserved/
+   fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — **Day 1 COMPLETE (unit 6).** Room poster (Path A) + card renderers + the evaluator
+  (live re-check → fire-once → post) + 120s heartbeat + webhook deviation hook + a runnable watcher
+  service (`src/watcher/index.ts`). Merging a watched PR now drives a reopen card / wake note into the
+  room in code. 69 tests green; typecheck/test/lint green; service entry wires up at runtime (needs env).
 - 2026-11-01 — Day 1 unit 5 done: `github.pr_merged` pure condition (`src/conditions`) + GitHub source
   client with 3× backoff retries (`src/sources`). Unreachable source → `unobserved`, never a false
   `false` (I2). 56 tests green incl. backoff timing [1000,4000,16000]. typecheck/test/lint green.

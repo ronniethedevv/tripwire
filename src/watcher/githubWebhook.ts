@@ -62,6 +62,8 @@ export interface WebhookDeps {
   readonly evidenceDir: string;
   readonly now?: () => number;
   readonly logger?: Logger;
+  /** Deviation trigger, invoked fire-and-forget after a new event is stored (keeps I3). */
+  readonly onIndexed?: (target: { repo: string; numberOrRef: string }) => void;
 }
 
 // Delivery ids become a filename; keep them to a safe charset (defence in depth,
@@ -125,6 +127,15 @@ export function createWebhookApp(deps: WebhookDeps): Hono {
       { delivery, event: eventType, repo: normalized.repo, ref: normalized.numberOrRef, result },
       'webhook stored',
     );
+    // Deviation trigger: schedule after the response, never awaited, so the
+    // request only validates, stores and returns (I3).
+    if (result === 'stored' && deps.onIndexed !== undefined) {
+      const onIndexed = deps.onIndexed;
+      const target = { repo: normalized.repo, numberOrRef: normalized.numberOrRef };
+      queueMicrotask(() => {
+        onIndexed(target);
+      });
+    }
     return c.json({ ok: true, indexed: true, duplicate: result === 'duplicate' }, 200);
   });
 
