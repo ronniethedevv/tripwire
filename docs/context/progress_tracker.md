@@ -188,6 +188,10 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — Day 2 unit 1 done: `LoopService` (`src/mcp/service.ts`) — propose/arm/cancel/resolve/
+  list/explain over the store, enforcing HUMAN_HANDLES on decision arm+cancel (`NotAuthorized`), the
+  state machine, and an audit row per change. Added `Store.updateLoop`/`getFiring`, `LoopNotFound`,
+  `describeCondition`, and the proposal/armed/ledger renderers (ui_context.md). 83 tests green.
 - 2026-11-01 — **END-TO-END VALIDATED LIVE.** Ran the watcher on the real stack (WSL + the live Switch
   `0.31.0` server, tripwire agent), seeded an armed `github.pr_merged` loop on `ronniethedevv/tripwire`
   PR #2, and merged the PR. Within one 15s heartbeat the watcher live-re-checked GitHub, fired once, and

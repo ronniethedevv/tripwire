@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Evidence } from '../../src/conditions/index.js';
 import { createLoop, type Loop } from '../../src/core/index.js';
-import { renderAgentWakeNote, renderReopenCard } from '../../src/room/index.js';
+import {
+  renderAgentWakeNote,
+  renderArmed,
+  renderLedger,
+  renderProposal,
+  renderReopenCard,
+} from '../../src/room/index.js';
 
 const evidence: Evidence = {
   url: 'https://github.com/owner/repo/pull/3',
@@ -62,5 +68,32 @@ describe('renderAgentWakeNote', () => {
     expect(renderAgentWakeNote(agentLoop(), evidence)).toBe(
       "@builder you're unblocked: PR #3 in owner/repo is merged — https://github.com/owner/repo/pull/3. Resume: open the pricing-page PR.",
     );
+  });
+});
+
+describe('renderProposal', () => {
+  it('asks a human to confirm, in plain words', () => {
+    const text = renderProposal(decisionLoop());
+    expect(text).toContain('Proposed hold: pricing-page decision');
+    expect(text).toContain('Waiting for: owner/repo PR #3 merges');
+    expect(text).toContain("Why we're waiting: until design PR #3 merges");
+    expect(text).toContain('Owner: @alice');
+    expect(text).toContain('Reply "yes" to arm');
+  });
+});
+
+describe('renderArmed', () => {
+  it('confirms the hold with the condition in plain words', () => {
+    expect(renderArmed(decisionLoop())).toBe(
+      "⏳ Holding: pricing-page decision — until owner/repo PR #3 merges. I'll bring it back the moment that's true.",
+    );
+  });
+});
+
+describe('renderLedger', () => {
+  it('numbers the open loops with condition, owner, and date', () => {
+    const text = renderLedger([decisionLoop()], 'Africa/Lagos');
+    expect(text).toContain('Open loops in this room (1):');
+    expect(text).toContain('1. ⏳ pricing-page decision — until owner/repo PR #3 merges — owner @alice — since');
   });
 });

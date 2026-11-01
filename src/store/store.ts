@@ -112,6 +112,20 @@ export interface InsertEventInput {
 
 export type EventInsertResult = 'stored' | 'duplicate';
 
+const firingRowSchema = z.object({
+  loop_id: z.string(),
+  fired_at: z.number(),
+  evidence_path: z.string().nullable(),
+  room_message_ref: z.string().nullable(),
+});
+
+export interface StoredFiring {
+  readonly loopId: string;
+  readonly firedAt: number;
+  readonly evidencePath: string | null;
+  readonly roomMessageRef: string | null;
+}
+
 export type FiringResult = 'fired' | 'already_fired';
 
 export interface RecordFiringInput {
@@ -248,6 +262,40 @@ export class Store {
   getEventByDedupeKey(dedupeKey: string): StoredEvent | null {
     const row = this.db.prepare('SELECT * FROM events WHERE dedupe_key = ?').get(dedupeKey);
     return row === undefined ? null : rowToEvent(row);
+  }
+
+  /** Persist a loop's mutable lifecycle fields after a state change (arm/cancel/resolve). */
+  updateLoop(loop: Loop): void {
+    this.db
+      .prepare(
+        `UPDATE loops SET status=@status, armed_by=@armed_by, armed_at=@armed_at,
+           fired_at=@fired_at, closed_at=@closed_at, close_reason=@close_reason, expires_at=@expires_at
+         WHERE id=@id`,
+      )
+      .run({
+        id: loop.id,
+        status: loop.status,
+        armed_by: loop.armedBy,
+        armed_at: loop.armedAt,
+        fired_at: loop.firedAt,
+        closed_at: loop.closedAt,
+        close_reason: loop.closeReason,
+        expires_at: loop.expiresAt,
+      });
+  }
+
+  getFiring(loopId: string): StoredFiring | null {
+    const row = this.db.prepare('SELECT * FROM firings WHERE loop_id = ?').get(loopId);
+    if (row === undefined) {
+      return null;
+    }
+    const r = firingRowSchema.parse(row);
+    return {
+      loopId: r.loop_id,
+      firedAt: r.fired_at,
+      evidencePath: r.evidence_path,
+      roomMessageRef: r.room_message_ref,
+    };
   }
 
   /** Record the room message a firing produced (set after the card is posted). */

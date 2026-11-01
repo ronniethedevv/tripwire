@@ -19,3 +19,16 @@ export class InvalidTransition extends TripwireError {
     this.action = action;
   }
 }
+
+/** Thrown when an actor is not permitted to perform an action (e.g. a non-human arming a decision). */
+export class NotAuthorized extends TripwireError {}
+
+/** Thrown when a loop id does not exist. */
+export class LoopNotFound extends TripwireError {
+  readonly loopId: string;
+
+  constructor(loopId: string) {
+    super(`No loop with id '${loopId}'`);
+    this.loopId = loopId;
+  }
+}
