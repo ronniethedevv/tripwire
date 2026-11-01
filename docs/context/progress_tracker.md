@@ -188,6 +188,12 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — **END-TO-END VALIDATED LIVE.** Ran the watcher on the real stack (WSL + the live Switch
+  `0.31.0` server, tripwire agent), seeded an armed `github.pr_merged` loop on `ronniethedevv/tripwire`
+  PR #2, and merged the PR. Within one 15s heartbeat the watcher live-re-checked GitHub, fired once, and
+  posted the reopen card into Discord `#launch-room` via Path A — evidence link, UTC+Africa/Lagos
+  timestamp, `Decide: @ronnie`, exactly per ui_context.md. The full Day-1 pipeline (merge → poll → check
+  → fire-once → post) works on real code + real infra. All four invariants held live.
 - 2026-11-01 — **Day 1 COMPLETE (unit 6).** Room poster (Path A) + card renderers + the evaluator
   (live re-check → fire-once → post) + 120s heartbeat + webhook deviation hook + a runnable watcher
   service (`src/watcher/index.ts`). Merging a watched PR now drives a reopen card / wake note into the
