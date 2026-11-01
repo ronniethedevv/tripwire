@@ -138,13 +138,9 @@ src/
   mcp/         MCP server, tools, loop-operations service
 test/          vitest, mirrors src/
 docs/
-  context/     the spec pack (agents.md + project_overview / architecture / … / progress_tracker)
   SETUP.md     phone-followable runbook for the Switch server, Discord and agents
   agents/      paste-ready tripwire / builder agent definitions
 ```
-
-The full design, the Switch research (Q1–Q6, cited to the source), and the running log live in
-[`docs/context/progress_tracker.md`](docs/context/progress_tracker.md).
 
 ## Built on Switch
 
