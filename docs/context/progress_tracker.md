@@ -170,15 +170,22 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    calls / posts / model work in the request, I3). Added `Store.insertEvent`/`getEventByDedupeKey` and a
    shared redacting pino `src/logger.ts`. 10 tests (normaliser + handler: signature-reject, dedupe,
    store-and-return with payload-on-disk, unknown-event, missing-headers). 44 tests green total.
-5. **`github.pr_merged` condition (pure) + GitHub source client.** `src/conditions/pr_merged.ts`
-   params schema + `evaluate()→true|false|unobserved`; `src/sources` Octokit client with 3× backoff
-   (1s/4s/16s) → unobserved on failure (I2). Test true/false/unobserved.
+5. **`github.pr_merged` condition (pure) + GitHub source client. ✅ DONE 2026-11-01.**
+   `src/conditions/prMerged.ts` (zod params `{repo, number}`, `PrMergedSnapshot`, pure
+   `evaluatePrMerged → true|false|unobserved` with evidence) and `src/conditions/types.ts`
+   (`Evidence`/`Evaluation`). `src/sources`: `retry.ts` (`withRetry`, 3 retries, 1s/4s/16s, injectable
+   sleep) and `github.ts` (`GithubClient.fetchPrMerged` → snapshot; network failure → `{observed:false}`
+   = unobserved, never a false `false` (I2); Octokit adapter split out so tests stub it). 12 tests
+   (all three outcomes + backoff timing asserts [1000,4000,16000] + unobserved-on-failure). 56 green.
 6. **Evaluator + heartbeat wired to the path-A poster — PR-merged fires into the room.** Evaluator
    picks up armed loops matching an event, live re-check (<60s), fires once in one transaction, posts
    via the poster; 120s heartbeat re-checks all armed loops. Day-1 goal: merging a watched PR posts in
    the room. Test fire-once under concurrency, never-fire-on-unobserved, matching-loop selection.
 
 ## Log (newest first)
+- 2026-11-01 — Day 1 unit 5 done: `github.pr_merged` pure condition (`src/conditions`) + GitHub source
+  client with 3× backoff retries (`src/sources`). Unreachable source → `unobserved`, never a false
+  `false` (I2). 56 tests green incl. backoff timing [1000,4000,16000]. typecheck/test/lint green.
 - 2026-11-01 — Day 1 unit 4 done: GitHub webhook endpoint (`src/watcher/githubWebhook.ts`, Hono) that
   verifies the signature, normalises + stores the event deduped on delivery id, and returns 200 with no
   checking in the request (I3). Added events-table store access and a shared redacting logger. 44 tests
