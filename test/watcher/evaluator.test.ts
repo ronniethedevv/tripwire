@@ -25,6 +25,7 @@ function fetchers(over: Partial<GithubFetchers> = {}): GithubFetchers {
     pullRequest: over.pullRequest ?? (async () => { throw new Error('no pr stub'); }),
     issue: over.issue ?? (async () => { throw new Error('no issue stub'); }),
     checks: over.checks ?? (async () => { throw new Error('no checks stub'); }),
+    searchCode: over.searchCode ?? (async () => { throw new Error('no searchCode stub'); }),
   };
 }
 

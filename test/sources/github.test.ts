@@ -10,6 +10,7 @@ function fetchers(over: Partial<GithubFetchers> = {}): GithubFetchers {
     pullRequest: over.pullRequest ?? (async () => { throw new Error('no pullRequest stub'); }),
     issue: over.issue ?? (async () => { throw new Error('no issue stub'); }),
     checks: over.checks ?? (async () => { throw new Error('no checks stub'); }),
+    searchCode: over.searchCode ?? (async () => { throw new Error('no searchCode stub'); }),
   };
 }
 
@@ -121,5 +122,32 @@ describe('GithubClient.fetchChecksGreen', () => {
       { sleep: noSleep, logger: silent },
     );
     expect(await client.fetchChecksGreen('owner/repo', 'abc')).toEqual({ observed: false });
+  });
+});
+
+describe('GithubClient.fetchUsageCount', () => {
+  it('sums matches across the watched repos', async () => {
+    const searchCode = vi.fn(async (_needle: string, repo: string) => (repo === 'a/b' ? 2 : 3));
+    const client = new GithubClient(fetchers({ searchCode }), { now: () => 9, sleep: noSleep, logger: silent });
+    expect(await client.fetchUsageCount('move_ref', ['a/b', 'c/d'])).toEqual({
+      observed: true,
+      count: 5,
+      url: 'https://github.com/search?q=move_ref&type=code',
+      observedAt: 9,
+    });
+    expect(searchCode).toHaveBeenCalledTimes(2);
+  });
+
+  it('is unobserved if any repo search fails (no partial count fires)', async () => {
+    const client = new GithubClient(
+      fetchers({
+        searchCode: async (_needle, repo) => {
+          if (repo === 'c/d') throw new Error('rate limited');
+          return 2;
+        },
+      }),
+      { sleep: noSleep, logger: silent },
+    );
+    expect(await client.fetchUsageCount('move_ref', ['a/b', 'c/d'])).toEqual({ observed: false });
   });
 });

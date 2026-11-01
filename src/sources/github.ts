@@ -3,6 +3,7 @@ import type {
   ChecksGreenSnapshot,
   IssueClosedSnapshot,
   PrMergedSnapshot,
+  UsageCountSnapshot,
 } from '../conditions/index.js';
 import { logger as defaultLogger, type Logger } from '../logger.js';
 import { withRetry } from './retry.js';
@@ -25,6 +26,8 @@ export interface GithubFetchers {
   readonly pullRequest: (owner: string, repo: string, number: number) => Promise<PullRequestState>;
   readonly issue: (owner: string, repo: string, number: number) => Promise<IssueState>;
   readonly checks: (owner: string, repo: string, ref: string) => Promise<ChecksState>;
+  /** Number of files matching `needle` in `repo` (owner/name). */
+  readonly searchCode: (needle: string, repo: string) => Promise<number>;
 }
 
 export interface GithubClientOptions {
@@ -86,6 +89,24 @@ export class GithubClient {
     const checks = await this.tryFetch(() => this.fetchers.checks(owner, name, ref), `checks ${repo}@${ref}`);
     return checks === null ? { observed: false } : { observed: true, allGreen: checks.allGreen, url: checks.htmlUrl, observedAt: this.now() };
   }
+
+  /**
+   * Sum matches for `needle` across the watched repos. If any repo search can't
+   * be read after retries the whole result is unobserved — a partial count must
+   * never fire (I2).
+   */
+  async fetchUsageCount(needle: string, repos: readonly string[]): Promise<UsageCountSnapshot> {
+    let count = 0;
+    for (const repo of repos) {
+      const n = await this.tryFetch(() => this.fetchers.searchCode(needle, repo), `search "${needle}" in ${repo}`);
+      if (n === null) {
+        return { observed: false };
+      }
+      count += n;
+    }
+    const url = `https://github.com/search?q=${encodeURIComponent(needle)}&type=code`;
+    return { observed: true, count, url, observedAt: this.now() };
+  }
 }
 
 const GREEN_CONCLUSIONS = new Set(['success', 'neutral', 'skipped']);
@@ -109,6 +130,10 @@ export function octokitFetchers(token: string): GithubFetchers {
         runs.length > 0 &&
         runs.every((c) => c.status === 'completed' && c.conclusion !== null && GREEN_CONCLUSIONS.has(c.conclusion));
       return { allGreen, htmlUrl: `https://github.com/${owner}/${repo}/commits/${ref}` };
+    },
+    searchCode: async (needle, repo) => {
+      const res = await octokit.rest.search.code({ q: `${needle} repo:${repo}` });
+      return res.data.total_count;
     },
   };
 }

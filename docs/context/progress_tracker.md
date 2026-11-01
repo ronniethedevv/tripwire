@@ -6,8 +6,11 @@
       PR-merged condition fires a message into the room  (all 6 units done 2026-11-01, 69 tests green)
 - [x] Day 2 (Nov 5) — MCP tools; confirmation flow; reopen card; agent wake note; ledger
       (done 2026-11-01: 7 MCP tools over stdio, human-only arm/cancel on decisions, 88 tests green)
-- [ ] Day 3 (Nov 6) — transcript extraction; usage-count, checks-green, date conditions; hardening;
+- [~] Day 3 (Nov 6) — transcript extraction; usage-count, checks-green, date conditions; hardening;
       CI + CodeRabbit; backup video
+      (2026-11-01: all 5 conditions done + evaluator dispatch; transcript extraction = propose_loops;
+      hardening (fire-once/live re-check/retries/redaction) already in place; CI exists. Remaining:
+      CodeRabbit config (optional) + backup video (manual). 118 tests green.)
 - [ ] Day 4 (Nov 7) — feature freeze at noon; README; demo video; submission
 
 ## Demo script (must pass three runs in a row)
@@ -189,6 +192,11 @@ Source of truth: `sandbox-quantum/switch` @ `a620ab610945e006023f54831818f160eaf
    fire-once/wake-note/matching). 69 tests green; service entry resolves at runtime.
 
 ## Log (newest first)
+- 2026-11-01 — Day 3 conditions complete. Added `usage.count_at_least` (code search summed across the
+  watched repos; any unreadable repo → unobserved so a partial count never fires, I2), plus
+  `issue_closed`/`checks_green`/`time.after`. All five condition types are implemented and dispatched by
+  the evaluator. 118 tests green. Remaining Day-3 items are non-code: CodeRabbit config (optional) and
+  the backup demo video.
 - 2026-11-01 — **Day 2 COMPLETE (unit 2).** `src/mcp/server.ts` exposes 7 tools over MCP stdio
   (propose_loop, propose_loops, arm_loop, list_loops, explain_loop, cancel_loop, resolve_loop),
   each returning the right ui_context card and surfacing service errors as `isError`. Added

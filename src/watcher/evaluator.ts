@@ -3,10 +3,12 @@ import {
   evaluateIssueClosed,
   evaluatePrMerged,
   evaluateTimeAfter,
+  evaluateUsageCount,
   parseChecksGreenParams,
   parseIssueClosedParams,
   parsePrMergedParams,
   parseTimeAfterParams,
+  parseUsageCountParams,
   type Evaluation,
 } from '../conditions/index.js';
 import type { Loop } from '../core/index.js';
@@ -85,12 +87,15 @@ export class Evaluator {
         const snapshot = await this.deps.github.fetchChecksGreen(params.repo, params.ref);
         return evaluateChecksGreen(params, snapshot);
       }
+      case 'usage.count_at_least': {
+        const params = parseUsageCountParams(loop.condition.params);
+        const snapshot = await this.deps.github.fetchUsageCount(params.needle, params.repos);
+        return evaluateUsageCount(params, snapshot);
+      }
       case 'time.after': {
         const params = parseTimeAfterParams(loop.condition.params);
         return evaluateTimeAfter(params, this.now());
       }
-      default:
-        return { state: 'unobserved', evidence: null };
     }
   }
 
