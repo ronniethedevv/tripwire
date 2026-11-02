@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "dev:watcher": "tsx watch src/watcher/index.ts",
     "dev:mcp": "tsx src/mcp/index.ts",
-    "seed": "tsx scripts/seed-loop.ts"
+    "seed": "tsx scripts/seed-loop.ts",
+    "cli": "tsx src/cli/tripwire.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
