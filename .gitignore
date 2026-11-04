@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+
+# Secrets — never commit real env or tokens (I5)
+.env
+.env.*
+!.env.example
+
+# Runtime data (SQLite + evidence snapshots live under data/)
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# Logs
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Internal working docs — kept locally, not published
+/tripwire-spec.md
+/agents.md
+/docs/context/
+
+# Local MCP wiring (per-deployment handles/paths); copy from .mcp.json.example
+/.mcp.json

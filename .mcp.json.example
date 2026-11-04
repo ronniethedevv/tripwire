@@ -1,0 +1,14 @@
+{
+  "//": "Copy to .mcp.json in the tripwire agent's working directory (this repo clone, the same one the watcher runs in so they share the SQLite file). Also add .claude/settings.json with {\"enableAllProjectMcpServers\": true} so Switch Console's headless agent loads this server without a trust prompt. Set HUMAN_HANDLES to the Discord handle(s) allowed to arm/cancel decisions — include the BARE username the agent passes (e.g. ronnie_thedev), not only the @-prefixed form, or arm fails with 'doesn't recognise <handle> as a human handle'. Restart the agent's session after changing this file. When Switch Console (or `claude`) starts the agent here, it loads this Tripwire MCP server and gets the loop tools.",
+  "mcpServers": {
+    "tripwire": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp/index.ts"],
+      "env": {
+        "DATABASE_PATH": "./data/tripwire.sqlite",
+        "HUMAN_HANDLES": "@your-handle",
+        "ROOM_ZONE": "Africa/Lagos"
+      }
+    }
+  }
+}
