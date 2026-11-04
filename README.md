@@ -124,6 +124,27 @@ npm run dev:watcher
 
 Secrets live only in environment variables (`.env.example` ships names only); logs are redacted and never carry message bodies.
 
+## Bring your own agent
+
+Tripwire is **infrastructure, not an agent** — two small pieces a team runs alongside **its own** agent. Whatever you already use in the room (Claude Code, Codex, Cursor, OpenCode …) becomes loop-aware, and the model and credentials stay yours. Each team runs its own self-contained copy — nothing hosted, no shared account, no per-use cost to anyone else.
+
+Plug in, on your own machine:
+
+1. **Clone and install** (Node 20):
+   ```bash
+   git clone https://github.com/ronniethedevv/tripwire && cd tripwire && npm ci
+   ```
+2. **Give your agent the loop tools.** Copy `.mcp.json.example` → `.mcp.json`, set `HUMAN_HANDLES`, and point your Switch agent's working directory at this clone. Any Switch-compatible agent that reads `.mcp.json` then has `propose_loop`, `arm_loop`, `list_loops`, `explain_loop`, `cancel_loop`, `resolve_loop` (`docs/SETUP.md` has the exact steps).
+3. **Run the watcher** — deterministic, no model, no per-use credentials:
+   ```bash
+   set -a; source .env; set +a    # Switch poster creds + a watched repo; see .env.example
+   npm run dev:watcher
+   ```
+
+Now your agent turns chat into loops through the MCP tools, and the watcher re-checks each condition and fires the reopen card — **your agent, your credentials; Tripwire is the shared loop layer underneath.** The whole room, whatever agents it brings, works off one waiting list.
+
+> State lives in the local SQLite file, so each team's copy is independent. A single hosted Tripwire that many teams' agents connect to is the natural next step — serve the MCP over HTTP and move the store to a networked DB — and is out of scope for this build.
+
 ## Layout
 
 ```
