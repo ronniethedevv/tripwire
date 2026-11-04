@@ -91,9 +91,8 @@ flowchart LR
 
 ## Status — what's proven
 
-- ✅ **End-to-end, live:** a real GitHub merge, caught by the heartbeat poll, live-re-checked, fired **exactly once**, and posted the reopen card into a Discord `#launch-room` via Path A — evidence link and all.
-- ✅ **118 tests** green (`typecheck`, `test`, `lint`) — the state machine (every allowed/rejected transition), fire-once under concurrency, all five conditions (true/false/unobserved), the webhook, the evaluator, the MCP tools (driven through a real MCP client).
-- 🔜 Running `tripwire`/`builder` as live Claude Code agents for the full chat-driven demo is a deployment step (see `docs/SETUP.md`).
+- ✅ **The full chat-driven loop, live:** in a Discord `#launch-room`, a person parked a decision in chat → the live **Claude Code `tripwire` agent** created and armed a real loop through its MCP tools (past the human-handle gate) → the **watcher** live-re-checked the GitHub PR, fired **exactly once**, and posted the reopen card — evidence link, original reason, and the waiter — into the same room.
+- ✅ **126 tests** green (`typecheck`, `test`, `lint`) — the state machine (every allowed/rejected transition), fire-once under concurrency, all five conditions (true/false/unobserved), the webhook, the evaluator, the MCP tools (driven through a real MCP client).
 
 ## Running it
 

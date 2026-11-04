@@ -189,15 +189,36 @@ and `host-remotely.md`. **All of section D is laptop work.**
    at the VM; **Display name** = something memorable. Work down the install rows (provider CLIs, git,
    `tmux`, Node 18+) until status is **Ready** (`host-remotely.md`).
 4. Prepare the agents' working directories **on the VM first** — Switch Console **never clones your
-   repo**, and an agent sees only what is already in its directory (`host-remotely.md` warning):
+   repo**, and an agent sees only what is already in its directory (`host-remotely.md` warning). The
+   `tripwire` agent works **inside the Tripwire repo clone** — the same one the watcher runs in — so it
+   has the MCP server on hand and shares the watcher's SQLite file:
    ```sh
-   mkdir -p ~/agents/tripwire                 # tripwire: its own empty folder
+   git clone https://github.com/ronniethedevv/tripwire ~/tripwire && (cd ~/tripwire && npm ci)   # tripwire agent + watcher both live here
    git clone <demo-app repo> ~/agents/builder/demo-app   # builder works only here; commit+push first
    ```
-5. **Your Agents → new agent → tripwire.** Run location = the VM host; Provider = **Claude Code**;
-   Working directory = `~/agents/tripwire`; **Name** = `tripwire`; **Description** and **Agent
-   instructions** = paste from `docs/agents/tripwire.md`; **Who can talk to your agent** = **Only me and
-   my agents** (set it explicitly — see the note); Auto mode on. Create. (`onboard-your-agents.md`)
+5. **Wire the Tripwire MCP tools into `~/tripwire` first** — without this the agent can only *talk*; it
+   can't create or arm loops. Copy the example config, set the human handle(s), and auto-approve the
+   server so the headless agent loads it without a prompt:
+   ```sh
+   cd ~/tripwire
+   cp .mcp.json.example .mcp.json
+   # HUMAN_HANDLES = the Discord handle(s) allowed to arm/cancel a *decision*. Include the BARE username
+   # the agent actually passes (e.g. "ronnie_thedev"), not only the "@"-prefixed form — a mismatch here
+   # makes arm fail with "doesn't recognise <handle> as a human handle".
+   sed -i 's/@your-handle/ronnie_thedev,@ronnie_thedev/' .mcp.json
+   mkdir -p .claude
+   printf '{\n  "enableAllProjectMcpServers": true\n}\n' > .claude/settings.json
+   ```
+   Then **Your Agents → new agent → tripwire.** Run location = the VM host (or **This computer** if you
+   run Switch Console locally); Provider = **Claude Code**; **Working directory = `~/tripwire`** (so it
+   loads `.mcp.json` and shares the watcher's SQLite); **Name** = `tripwire`; **Description** and **Agent
+   instructions** = paste from `docs/agents/tripwire.md`; **Who can talk to your agent** = **Anyone** (any
+   teammate can park a loop) or **Only me and my agents** to keep it private; Auto mode on. Create.
+   (`onboard-your-agents.md`)
+
+   > **Restart the agent's session after any `.mcp.json` / `HUMAN_HANDLES` change** — the MCP server only
+   > reloads on a fresh session (quit & reopen Switch Console, or end the session so the next mention
+   > starts a new one).
 6. **Your Agents → new agent → builder.** Run location = the VM host; Provider = Claude Code (or Codex);
    Working directory = `~/agents/builder/demo-app`; **Name** = `builder`; Description + instructions =
    paste from `docs/agents/builder.md`; **Who can talk** = **Only me and my agents** (so `tripwire` can
